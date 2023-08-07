@@ -31,8 +31,10 @@
 思考：自媒体的本质是将自己提供的优质服务作为一个引流的工具，增加曝光度和流量；为自己赚钱的部分打好基础，所以首先是得提供价值，然后自己可以用价值创造财富！
 
 ### 20230808
-明天继续看看两个代码随想录的讲解
+学习：
 - [LeetCode：459.重复的子字符串](https://www.bilibili.com/video/BV1cg41127fw/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 - [LeetCode：232.用栈实现队列](https://www.bilibili.com/video/BV1nY4y1w7VC/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
+
+复习：0807 这一天上午代码随想录的视频，包括思想归纳和代码书写；终极目标 —— 0.5h完成该部分内容！
 
 
