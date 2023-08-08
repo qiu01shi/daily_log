@@ -47,3 +47,10 @@
 复习：0807 这一天上午代码随想录的视频，包括思想归纳和代码书写；终极目标 —— 0.5h完成该部分内容！
 
 
+
+### 20230809
+代码学习：
+- [LeetCode：225. 用队列实现栈](https://www.bilibili.com/video/BV1Fd4y1K7sm/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
+- [LeetCode：20. 有效的括号](https://www.bilibili.com/video/BV1AF411w78g/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
+
+
