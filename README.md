@@ -53,11 +53,11 @@
 
 
 ### 20230809
-算法题学习：
+算法题学习：<= 1h
 - [LeetCode：225. 用队列实现栈](https://www.bilibili.com/video/BV1Fd4y1K7sm/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 - [LeetCode：20. 有效的括号](https://www.bilibili.com/video/BV1AF411w78g/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 - [LeetCode：1047. 删除字符串中的所有相邻重复项](https://www.bilibili.com/video/BV12a411P7mw/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 - [LeetCode：150. 逆波兰表达式求值](https://www.bilibili.com/video/BV1kd4y1o7on/?spm_id_from=pageDriver&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 
-算法题复习：
+算法题复习：>= 2h
 - [LeetCode：18. 四数之和](https://www.bilibili.com/video/BV1DS4y147US/?spm_id_from=333.999.0.0&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
