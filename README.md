@@ -62,6 +62,10 @@
 算法题复习：>= 2h
 - [LeetCode：18. 四数之和](https://www.bilibili.com/video/BV1DS4y147US/?spm_id_from=333.999.0.0&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 
+### 20230810
+算法题学习
+- [LeetCode：150. 逆波兰表达式求值](https://www.bilibili.com/video/BV1kd4y1o7on/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
+
 
 
 ### 20230818
