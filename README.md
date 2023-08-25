@@ -76,6 +76,6 @@
 
 ### 20230825
 - [LeetCode：226.翻转二叉树](https://www.bilibili.com/video/BV1sP4y1f7q7/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
-
+- [LeetCode：101. 对称二叉树](https://www.bilibili.com/video/BV1ue4y1Y7Mf/?spm_id_from=333.788&vd_source=3ab764fcf4680ad5f291a4d40d55611e)
 
 
