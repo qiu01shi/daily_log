@@ -15,19 +15,27 @@ keyboard_typing.py
     紧急停止：
         按 Esc 键可随时中止输入。
 
+两种工作模式：
+    A. 剪贴板模式 (USE_CLIPBOARD = True，默认，推荐)
+       把整个文件放入系统剪贴板后一次 Ctrl+V 粘贴。
+       瞬时完成，不丢字符、不串行，适合 6000+ 行的大文件。
+    B. 逐字模拟输入 (USE_CLIPBOARD = False)
+       仅当目标环境禁止粘贴时使用。速度慢且可能丢字符，
+       可通过 WRITE_DELAY / ENTER_DELAY 调节速度与准确度的平衡。
+
 注意：
     1. 运行前将输入法切换为英文。
-    2. 目标编辑器为记事本(Notepad)时，使用默认配置即可：
-           EDITOR_AUTO_INDENT = False   # 记事本无自动缩进
-           DISMISS_SUGGESTIONS = False  # 记事本无补全弹窗
-       记事本不会改写字符、不会自动缩进，逐字输入最稳定。
-    3. 若改用 VSCode 等智能编辑器，请将上述两项改为 True，
+    2. 记事本(Notepad)用默认配置即可。
+    3. 逐字模式下若用 VSCode 等智能编辑器，需将
+       EDITOR_AUTO_INDENT / DISMISS_SUGGESTIONS 设为 True，
        并在 VSCode settings.json 中关闭自动补全 / 自动闭合等功能。
 """
 
+import ctypes
 import os
 import sys
 import time
+from ctypes import wintypes
 
 try:
     import keyboard
@@ -57,12 +65,18 @@ ENTER_DELAY = 0.02
 EXTRA_DELAY = 0.05
 ESC_CHECK_INTERVAL = 50
 
+# 剪贴板模式（最快且零错误，强烈推荐）：把整个文件放入系统剪贴板，
+# 然后用一次 Ctrl+V 粘贴。瞬时完成，不会丢字符/串行/错位。
+# 仅当目标环境确实禁止粘贴时，才设为 False 退回逐字模拟输入。
+USE_CLIPBOARD = True
+
+# ↓↓↓ 以下仅在 USE_CLIPBOARD = False（逐字模拟输入）时生效 ↓↓↓
+
 # 快速模式：整行一次性写入，而不是逐字符 + 逐字符延迟。
-# 记事本等无干扰编辑器强烈建议开启，可把 6000+ 行的耗时从数小时降到几分钟。
 FAST_WRITE = True
-# 快速模式下每个字符之间的间隔(秒)。记事本可设为 0；
-# 若发现偶尔丢字符，可调到 0.002~0.005。
-WRITE_DELAY = 0.0
+# 快速模式下每个字符之间的间隔(秒)。设为 0 最快但易丢字；
+# 实测记事本建议 0.004~0.008 兼顾速度与准确。
+WRITE_DELAY = 0.006
 
 # 目标编辑器是否会在换行时自动复制上一行缩进。
 # 记事本(Notepad)不会，设为 False 直接逐字输入整行；
@@ -173,6 +187,66 @@ def press_enter():
     dismiss_suggestions()
     keyboard.press_and_release("enter")
     time.sleep(ENTER_DELAY)
+
+
+def set_clipboard_text(text):
+    """通过 Windows 原生 API 把文本写入剪贴板（CF_UNICODETEXT）。
+
+    不创建任何窗口，因此不会抢走目标编辑器(记事本)的焦点。
+    """
+    CF_UNICODETEXT = 13
+    GMEM_MOVEABLE = 0x0002
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+
+    kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+    kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+    kernel32.GlobalLock.restype = wintypes.LPVOID
+    kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+    user32.SetClipboardData.restype = wintypes.HANDLE
+    user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+
+    data = text.encode("utf-16-le") + b"\x00\x00"
+    size = len(data)
+
+    if not user32.OpenClipboard(None):
+        return False
+    try:
+        user32.EmptyClipboard()
+        h_global = kernel32.GlobalAlloc(GMEM_MOVEABLE, size)
+        if not h_global:
+            return False
+        lock = kernel32.GlobalLock(h_global)
+        if not lock:
+            return False
+        ctypes.memmove(lock, data, size)
+        kernel32.GlobalUnlock(h_global)
+        if not user32.SetClipboardData(CF_UNICODETEXT, h_global):
+            return False
+        return True
+    finally:
+        user32.CloseClipboard()
+
+
+def paste_text_content(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 统一换行为 CRLF，确保经典记事本也能正确分行显示。
+    content = normalize_content(content).replace("\n", "\r\n")
+
+    if not set_clipboard_text(content):
+        print("写入剪贴板失败，无法使用粘贴模式。")
+        print("可将 USE_CLIPBOARD 设为 False 改用逐字输入。")
+        return False
+
+    keyboard.press_and_release("ctrl+v")
+    time.sleep(0.3)
+    print("已通过剪贴板粘贴全部内容。")
+    return True
 
 
 def normalize_content(content):
@@ -307,7 +381,10 @@ def main():
     countdown(COUNTDOWN_SECONDS)
 
     try:
-        success = type_text_content(input_file)
+        if USE_CLIPBOARD:
+            success = paste_text_content(input_file)
+        else:
+            success = type_text_content(input_file)
         if success:
             print("所有内容已成功输入！")
         else:
