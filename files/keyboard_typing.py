@@ -53,9 +53,16 @@ CANDIDATE_EXTENSIONS = (
 )
 COUNTDOWN_SECONDS = 10
 TYPING_DELAY = 0.03
-ENTER_DELAY = 0.06
+ENTER_DELAY = 0.02
 EXTRA_DELAY = 0.05
 ESC_CHECK_INTERVAL = 50
+
+# 快速模式：整行一次性写入，而不是逐字符 + 逐字符延迟。
+# 记事本等无干扰编辑器强烈建议开启，可把 6000+ 行的耗时从数小时降到几分钟。
+FAST_WRITE = True
+# 快速模式下每个字符之间的间隔(秒)。记事本可设为 0；
+# 若发现偶尔丢字符，可调到 0.002~0.005。
+WRITE_DELAY = 0.0
 
 # 目标编辑器是否会在换行时自动复制上一行缩进。
 # 记事本(Notepad)不会，设为 False 直接逐字输入整行；
@@ -131,6 +138,16 @@ def type_string(text):
     return True
 
 
+def type_line_fast(line):
+    # 整行一次性写入，速度远快于逐字符。适用于记事本等无干扰编辑器。
+    if keyboard.is_pressed("esc"):
+        print("\n检测到 Esc，输入已中止。")
+        return False
+    if line:
+        keyboard.write(line, delay=WRITE_DELAY)
+    return True
+
+
 def apply_line_prefix(prev_prefix, target_prefix):
     common = common_prefix_length(prev_prefix, target_prefix)
 
@@ -186,6 +203,9 @@ def type_text_content(file_path):
             if body and not type_string(body):
                 return False
             prev_prefix = prefix
+        elif FAST_WRITE:
+            if not type_line_fast(line):
+                return False
         else:
             if line and not type_string(line):
                 return False
@@ -195,7 +215,6 @@ def type_text_content(file_path):
 
         if (index + 1) % 10 == 0:
             print(f"\r进度: {index + 1}/{total_lines} 行", end="", flush=True)
-            time.sleep(0.02)
 
     print(f"\r进度: {total_lines}/{total_lines} 行 - 输入完成！")
     return True
