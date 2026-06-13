@@ -1,0 +1,4 @@
+    L = (A*P*C.'+N)/(C*P*C.'+R);
+    M = P*C.'/(C*P*C.'+R);
+    Z = (eye(size(A,1))-M*C)*P*(eye(size(A,1))-M*C).' + M*R*M.';
+    PNew = (A-N/R*C)*Z*(A-N/R*C).' + Q - N/R*N.';
