@@ -1,0 +1,301 @@
+"""
+keyboard_typing.py
+读取纯文本文件，通过模拟按键操作将其内容输入到目标窗口。
+适用场景：环境禁止复制粘贴，需通过键盘模拟方式将文本内容同步到目标文件。
+
+依赖安装：
+    pip install keyboard
+
+使用方式：
+    以管理员权限运行本脚本：
+        python keyboard_typing.py
+    运行后有 10 秒倒计时，请在倒计时结束前切换到目标编辑器窗口。
+    倒计时结束后脚本将自动开始模拟键盘输入。
+
+    紧急停止：
+        按 Esc 键可随时中止输入。
+
+注意：
+    运行前请将输入法切换为英文，并关闭编辑器的自动补全/括号配对等干扰功能。
+"""
+
+import os
+import sys
+import time
+
+try:
+    import keyboard
+except ImportError:
+    print("缺少依赖: keyboard")
+    print("请运行: pip install keyboard")
+    sys.exit(1)
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_NAME = os.path.basename(__file__)
+CANDIDATE_EXTENSIONS = (
+    ".json",
+    ".txt",
+    ".csv",
+    ".xml",
+    ".yaml",
+    ".yml",
+    ".ini",
+    ".cfg",
+    ".log",
+    ".md",
+    ".py",
+)
+COUNTDOWN_SECONDS = 10
+TYPING_DELAY = 0.03
+ENTER_DELAY = 0.05
+ESC_CHECK_INTERVAL = 50
+
+SHIFT_CHAR_MAP = {
+    "!": "1",
+    "@": "2",
+    "#": "3",
+    "$": "4",
+    "%": "5",
+    "^": "6",
+    "&": "7",
+    "*": "8",
+    "(": "9",
+    ")": "0",
+    "_": "-",
+    "+": "=",
+    "{": "[",
+    "}": "]",
+    ":": ";",
+    '"': "'",
+    "|": "\\",
+    "<": ",",
+    ">": ".",
+    "?": "/",
+    "~": "`",
+}
+
+DIRECT_SPECIAL_MAP = {
+    " ": "space",
+    "\t": "tab",
+}
+
+
+def split_leading_whitespace(line):
+    index = 0
+    while index < len(line) and line[index] in " \t":
+        index += 1
+    return line[:index], line[index:]
+
+
+def common_prefix_length(a, b):
+    length = min(len(a), len(b))
+    for index in range(length):
+        if a[index] != b[index]:
+            return index
+    return length
+
+
+def press_key(key):
+    keyboard.press_and_release(key)
+    time.sleep(TYPING_DELAY)
+
+
+def type_character(ch):
+    if ch in DIRECT_SPECIAL_MAP:
+        press_key(DIRECT_SPECIAL_MAP[ch])
+    elif ch in SHIFT_CHAR_MAP:
+        keyboard.press("shift")
+        keyboard.press(SHIFT_CHAR_MAP[ch])
+        keyboard.release(SHIFT_CHAR_MAP[ch])
+        keyboard.release("shift")
+        time.sleep(TYPING_DELAY)
+    elif ch.isupper():
+        keyboard.press("shift")
+        keyboard.press(ch.lower())
+        keyboard.release(ch.lower())
+        keyboard.release("shift")
+        time.sleep(TYPING_DELAY)
+    else:
+        try:
+            keyboard.write(ch)
+        except ValueError:
+            keyboard.press_and_release(ch)
+        time.sleep(TYPING_DELAY)
+
+
+def check_esc(char_count):
+    if char_count > 0 and char_count % ESC_CHECK_INTERVAL == 0:
+        if keyboard.is_pressed("esc"):
+            print("\n检测到 Esc，输入已中止。")
+            return False
+        time.sleep(0.01)
+    return True
+
+
+def type_string(text):
+    char_count = 0
+    for ch in text:
+        type_character(ch)
+        char_count += 1
+        if not check_esc(char_count):
+            return False
+    return True
+
+
+def apply_line_prefix(prev_prefix, target_prefix):
+    common = common_prefix_length(prev_prefix, target_prefix)
+
+    for _ in range(len(prev_prefix) - common):
+        press_key("backspace")
+
+    if target_prefix[common:]:
+        if not type_string(target_prefix[common:]):
+            return False
+
+    return True
+
+
+def normalize_content(content):
+    return content.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def type_text_content(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = normalize_content(f.read())
+
+    lines = content.split("\n")
+    total_lines = len(lines)
+    prev_prefix = ""
+
+    for index, line in enumerate(lines):
+        if index > 0 and index % ESC_CHECK_INTERVAL == 0:
+            if keyboard.is_pressed("esc"):
+                print("\n检测到 Esc，输入已中止。")
+                return False
+
+        prefix, body = split_leading_whitespace(line)
+
+        if index == 0:
+            if prefix and not type_string(prefix):
+                return False
+        else:
+            if not apply_line_prefix(prev_prefix, prefix):
+                return False
+
+        if body and not type_string(body):
+            return False
+
+        if index < total_lines - 1:
+            keyboard.press_and_release("enter")
+            time.sleep(ENTER_DELAY)
+            prev_prefix = prefix
+
+        if (index + 1) % 10 == 0:
+            print(f"\r进度: {index + 1}/{total_lines} 行", end="", flush=True)
+            time.sleep(0.02)
+
+    print(f"\r进度: {total_lines}/{total_lines} 行 - 输入完成！")
+    return True
+
+
+def countdown(seconds):
+    print(f"将在 {seconds} 秒后开始输入，请切换到目标窗口！")
+    print("请确认输入法已切换为英文。")
+    print("按 Esc 可随时中止。")
+    for remaining in range(seconds, 0, -1):
+        if keyboard.is_pressed("esc"):
+            print("\n已取消。")
+            sys.exit(0)
+        print(f"\r倒计时: {remaining}...", end="", flush=True)
+        time.sleep(1)
+    print("\r开始输入！          ")
+
+
+def cleanup():
+    for key in ["shift", "ctrl", "alt", "win"]:
+        try:
+            keyboard.release(key)
+        except Exception:
+            pass
+    try:
+        keyboard.unhook_all()
+    except Exception:
+        pass
+
+
+def scan_text_files():
+    files = []
+    for name in sorted(os.listdir(SCRIPT_DIR)):
+        if name == SCRIPT_NAME:
+            continue
+        if name.lower().endswith(CANDIDATE_EXTENSIONS) and os.path.isfile(
+            os.path.join(SCRIPT_DIR, name)
+        ):
+            files.append(name)
+    return files
+
+
+def choose_file():
+    files = scan_text_files()
+    if not files:
+        print(f"错误: 在 {SCRIPT_DIR} 中未找到可输入的文本文件")
+        print(f"支持的扩展名: {', '.join(CANDIDATE_EXTENSIONS)}")
+        print(f"注意: 不会输入脚本自身 ({SCRIPT_NAME})")
+        sys.exit(1)
+
+    if len(files) == 1:
+        print(f"自动选择唯一文件: {files[0]}")
+        return os.path.join(SCRIPT_DIR, files[0])
+
+    print("可用文件列表:")
+    for idx, name in enumerate(files, 1):
+        size = os.path.getsize(os.path.join(SCRIPT_DIR, name))
+        print(f"  [{idx}] {name}  ({size:,} bytes)")
+
+    while True:
+        try:
+            choice = input(f"请选择文件编号 (1-{len(files)}): ").strip()
+            num = int(choice)
+            if 1 <= num <= len(files):
+                return os.path.join(SCRIPT_DIR, files[num - 1])
+            print(f"请输入 1 到 {len(files)} 之间的数字")
+        except ValueError:
+            print("请输入有效的数字")
+        except (KeyboardInterrupt, EOFError):
+            print("\n已取消。")
+            sys.exit(0)
+
+
+def main():
+    print("=" * 50)
+    print("文本按键模拟输入工具")
+    print("=" * 50)
+
+    input_file = choose_file()
+    print(f"输入文件: {input_file}")
+    print()
+
+    try:
+        with open(input_file, "r", encoding="utf-8") as f:
+            f.read()
+    except FileNotFoundError:
+        print(f"错误: 找不到文件 {input_file}")
+        sys.exit(1)
+
+    countdown(COUNTDOWN_SECONDS)
+
+    try:
+        success = type_text_content(input_file)
+        if success:
+            print("所有内容已成功输入！")
+        else:
+            print("输入被中止。")
+    except Exception as e:
+        print(f"\n发生异常: {e}")
+        print("输入被中断。")
+    finally:
+        cleanup()
+
+
+if __name__ == "__main__":
+    main()
