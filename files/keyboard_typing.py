@@ -16,7 +16,13 @@ keyboard_typing.py
         按 Esc 键可随时中止输入。
 
 注意：
-    运行前请将输入法切换为英文，并关闭编辑器的自动补全/括号配对等干扰功能。
+    1. 运行前将输入法切换为英文。
+    2. 目标编辑器为记事本(Notepad)时，使用默认配置即可：
+           EDITOR_AUTO_INDENT = False   # 记事本无自动缩进
+           DISMISS_SUGGESTIONS = False  # 记事本无补全弹窗
+       记事本不会改写字符、不会自动缩进，逐字输入最稳定。
+    3. 若改用 VSCode 等智能编辑器，请将上述两项改为 True，
+       并在 VSCode settings.json 中关闭自动补全 / 自动闭合等功能。
 """
 
 import os
@@ -47,9 +53,19 @@ CANDIDATE_EXTENSIONS = (
 )
 COUNTDOWN_SECONDS = 10
 TYPING_DELAY = 0.03
-ENTER_DELAY = 0.05
-EXTRA_DELAY = 0.04
+ENTER_DELAY = 0.06
+EXTRA_DELAY = 0.05
 ESC_CHECK_INTERVAL = 50
+
+# 目标编辑器是否会在换行时自动复制上一行缩进。
+# 记事本(Notepad)不会，设为 False 直接逐字输入整行；
+# VSCode 等会自动缩进，设为 True 启用缩进补偿。
+EDITOR_AUTO_INDENT = False
+
+# 换行前按 Esc 关闭编辑器的自动补全弹窗（VSCode 等需要）。
+# 记事本无补全弹窗，应设为 False。
+DISMISS_SUGGESTIONS = False
+DISMISS_DELAY = 0.03
 
 # XML/HTML 等敏感字符，编辑器可能拦截或自动改写，需额外等待
 SENSITIVE_CHARS = frozenset("/<>\"'=")
@@ -128,6 +144,20 @@ def apply_line_prefix(prev_prefix, target_prefix):
     return True
 
 
+def dismiss_suggestions():
+    # 关闭可能弹出的自动补全/提示窗口，使随后的 Enter 产生真正的换行。
+    if not DISMISS_SUGGESTIONS:
+        return
+    keyboard.press_and_release("esc")
+    time.sleep(DISMISS_DELAY)
+
+
+def press_enter():
+    dismiss_suggestions()
+    keyboard.press_and_release("enter")
+    time.sleep(ENTER_DELAY)
+
+
 def normalize_content(content):
     return content.replace("\r\n", "\n").replace("\r", "\n")
 
@@ -146,22 +176,22 @@ def type_text_content(file_path):
                 print("\n检测到 Esc，输入已中止。")
                 return False
 
-        prefix, body = split_leading_whitespace(line)
-
-        if index == 0:
-            if prefix and not type_string(prefix):
+        if EDITOR_AUTO_INDENT:
+            prefix, body = split_leading_whitespace(line)
+            if index == 0:
+                if prefix and not type_string(prefix):
+                    return False
+            elif not apply_line_prefix(prev_prefix, prefix):
                 return False
+            if body and not type_string(body):
+                return False
+            prev_prefix = prefix
         else:
-            if not apply_line_prefix(prev_prefix, prefix):
+            if line and not type_string(line):
                 return False
-
-        if body and not type_string(body):
-            return False
 
         if index < total_lines - 1:
-            keyboard.press_and_release("enter")
-            time.sleep(ENTER_DELAY)
-            prev_prefix = prefix
+            press_enter()
 
         if (index + 1) % 10 == 0:
             print(f"\r进度: {index + 1}/{total_lines} 行", end="", flush=True)
