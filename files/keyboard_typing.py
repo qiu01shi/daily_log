@@ -48,36 +48,11 @@ CANDIDATE_EXTENSIONS = (
 COUNTDOWN_SECONDS = 10
 TYPING_DELAY = 0.03
 ENTER_DELAY = 0.05
+EXTRA_DELAY = 0.04
 ESC_CHECK_INTERVAL = 50
 
-SHIFT_CHAR_MAP = {
-    "!": "1",
-    "@": "2",
-    "#": "3",
-    "$": "4",
-    "%": "5",
-    "^": "6",
-    "&": "7",
-    "*": "8",
-    "(": "9",
-    ")": "0",
-    "_": "-",
-    "+": "=",
-    "{": "[",
-    "}": "]",
-    ":": ";",
-    '"': "'",
-    "|": "\\",
-    "<": ",",
-    ">": ".",
-    "?": "/",
-    "~": "`",
-}
-
-DIRECT_SPECIAL_MAP = {
-    " ": "space",
-    "\t": "tab",
-}
+# XML/HTML 等敏感字符，编辑器可能拦截或自动改写，需额外等待
+SENSITIVE_CHARS = frozenset("/<>\"'=")
 
 
 def split_leading_whitespace(line):
@@ -101,26 +76,24 @@ def press_key(key):
 
 
 def type_character(ch):
-    if ch in DIRECT_SPECIAL_MAP:
-        press_key(DIRECT_SPECIAL_MAP[ch])
-    elif ch in SHIFT_CHAR_MAP:
-        keyboard.press("shift")
-        keyboard.press(SHIFT_CHAR_MAP[ch])
-        keyboard.release(SHIFT_CHAR_MAP[ch])
-        keyboard.release("shift")
-        time.sleep(TYPING_DELAY)
-    elif ch.isupper():
-        keyboard.press("shift")
-        keyboard.press(ch.lower())
-        keyboard.release(ch.lower())
-        keyboard.release("shift")
-        time.sleep(TYPING_DELAY)
-    else:
-        try:
-            keyboard.write(ch)
-        except ValueError:
-            keyboard.press_and_release(ch)
-        time.sleep(TYPING_DELAY)
+    # 空格单独按键，避免批量 write 时偶发丢字符
+    if ch == " ":
+        press_key("space")
+        return
+    if ch == "\t":
+        press_key("tab")
+        return
+
+    # 统一用 write 处理可打印字符（含 < > 等需 Shift 的符号），
+    # 比手动 press/release shift 更可靠，也兼容不同键盘布局
+    try:
+        keyboard.write(ch)
+    except ValueError:
+        keyboard.press_and_release(ch)
+
+    time.sleep(TYPING_DELAY)
+    if ch in SENSITIVE_CHARS:
+        time.sleep(EXTRA_DELAY)
 
 
 def check_esc(char_count):
