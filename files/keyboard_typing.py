@@ -16,12 +16,16 @@ keyboard_typing.py
         按 Esc 键可随时中止输入。
 
 两种工作模式：
-    A. 剪贴板模式 (USE_CLIPBOARD = True，默认，推荐)
-       把整个文件放入系统剪贴板后一次 Ctrl+V 粘贴。
-       瞬时完成，不丢字符、不串行，适合 6000+ 行的大文件。
-    B. 逐字模拟输入 (USE_CLIPBOARD = False)
-       仅当目标环境禁止粘贴时使用。速度慢且可能丢字符，
-       可通过 WRITE_DELAY / ENTER_DELAY 调节速度与准确度的平衡。
+    A. 逐字模拟输入 (USE_CLIPBOARD = False，默认)
+       通过模拟键盘逐字输入，可跨越远程桌面/虚拟机等剪贴板隔离环境。
+       速度受目标窗口吞吐限制，用 WRITE_DELAY 调节“速度 vs 准确”。
+    B. 剪贴板模式 (USE_CLIPBOARD = True)
+       一次 Ctrl+V 粘贴，瞬时且零错误，但【仅在本机与目标窗口
+       共享剪贴板时可用】。远程桌面/虚拟机等隔离环境无法使用。
+
+速度与准确的权衡（仅逐字模式）：
+    隔离/远程窗口带宽有限，WRITE_DELAY 太小会丢字、错位、重复。
+    丢字就调大 WRITE_DELAY 或 LINE_PAUSE；稳定后可逐步调小提速。
 
 注意：
     1. 运行前将输入法切换为英文。
@@ -61,22 +65,29 @@ CANDIDATE_EXTENSIONS = (
 )
 COUNTDOWN_SECONDS = 10
 TYPING_DELAY = 0.03
-ENTER_DELAY = 0.02
+ENTER_DELAY = 0.03
 EXTRA_DELAY = 0.05
 ESC_CHECK_INTERVAL = 50
 
-# 剪贴板模式（最快且零错误，强烈推荐）：把整个文件放入系统剪贴板，
-# 然后用一次 Ctrl+V 粘贴。瞬时完成，不会丢字符/串行/错位。
-# 仅当目标环境确实禁止粘贴时，才设为 False 退回逐字模拟输入。
-USE_CLIPBOARD = True
+# 剪贴板模式：把整个文件放入剪贴板后一次 Ctrl+V 粘贴，瞬时且零错误。
+# 仅在【本机与目标窗口共享剪贴板】时可用。
+# 若目标是远程桌面/虚拟机/沙箱等剪贴板隔离环境，必须设为 False。
+USE_CLIPBOARD = False
 
-# ↓↓↓ 以下仅在 USE_CLIPBOARD = False（逐字模拟输入）时生效 ↓↓↓
+# ↓↓↓ 以下为逐字模拟输入参数（USE_CLIPBOARD = False 时生效）↓↓↓
 
-# 快速模式：整行一次性写入，而不是逐字符 + 逐字符延迟。
+# 整行一次性写入（仍按 WRITE_DELAY 控制字符间隔），代码开销比纯逐字循环小。
 FAST_WRITE = True
-# 快速模式下每个字符之间的间隔(秒)。设为 0 最快但易丢字；
-# 实测记事本建议 0.004~0.008 兼顾速度与准确。
-WRITE_DELAY = 0.006
+
+# 每个字符之间的间隔(秒)，是“速度 vs 准确”的核心旋钮：
+#   远程桌面/虚拟机等隔离窗口带宽有限，发太快会丢字/错位/重复。
+#   - 本地记事本：可试 0.002~0.004
+#   - 远程桌面/虚拟机：建议 0.006~0.012，丢字就再调大
+# 6000 行(约 24 万字符)耗时 ≈ 字符数 × WRITE_DELAY，请据此权衡。
+WRITE_DELAY = 0.008
+
+# 每行写完、换行前的额外停顿(秒)，给远程窗口一点缓冲消化时间。
+LINE_PAUSE = 0.0
 
 # 目标编辑器是否会在换行时自动复制上一行缩进。
 # 记事本(Notepad)不会，设为 False 直接逐字输入整行；
@@ -283,6 +294,9 @@ def type_text_content(file_path):
         else:
             if line and not type_string(line):
                 return False
+
+        if LINE_PAUSE > 0:
+            time.sleep(LINE_PAUSE)
 
         if index < total_lines - 1:
             press_enter()
