@@ -1,0 +1,35 @@
+{
+  "description": "自动建模 Agent 最小评测任务集。每条都是空模型 + 建模意图（默认路由到 PIPELINE），覆盖 CapabilityProbe 已知的领域关键词（rc/pid/fir/ode/lowpass/feedback），便于对比 pipeline vs single。",
+  "tasks": [
+    {
+      "id": "sine_scale_recorder",
+      "prompt": "Build a 1 Hz sine wave through Scale(3.0) into a Recorder.",
+      "note": "文档里的 canonical 例子，最简单，确定性执行器应能完全建好并跑通。"
+    },
+    {
+      "id": "rc_lowpass",
+      "prompt": "Build a first-order RC low-pass filter driven by a sine source and record the output.",
+      "note": "对应 demo BuildRCLowPass；CapabilityProbe 有 rc/lowpass 领域先验。"
+    },
+    {
+      "id": "fir_filter",
+      "prompt": "Build a 3-tap FIR filter on a ramp input and record the filtered output.",
+      "note": "FIR 需要 SampleDelay + Scale + AddSubtract，测多元件编排。"
+    },
+    {
+      "id": "ode_decay",
+      "prompt": "Model the ODE dx/dt = -x using an integrator, starting from x=1, and record x over time.",
+      "note": "连续时间 ODE，测 integrator + 反馈。"
+    },
+    {
+      "id": "sdf_feedback",
+      "prompt": "Build an SDF feedback loop that accumulates a constant input, using a SampleDelay to break the cycle, and record the running sum.",
+      "note": "专门触发 SDF 反馈环必须过 SampleDelay 的坑，测 pitfall 注入是否生效。"
+    },
+    {
+      "id": "pid_step",
+      "prompt": "Build a PID controller loop that tracks a step input, and record the tracking error.",
+      "note": "最难，多元件 + 反馈 + 整定，pipeline 相对 single 优势应最明显。"
+    }
+  ]
+}
